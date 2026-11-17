@@ -1,0 +1,7 @@
+# Optional natural / cloned voice (Apple Silicon only). Install into a separate .voice-venv:
+#   python3.11 -m venv .voice-venv && .voice-venv/bin/pip install -r requirements-voice.txt
+mlx
+f5-tts-mlx
+kokoro-onnx
+soundfile
+numpy

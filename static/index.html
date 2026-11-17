@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MyOS</title>
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --panel: #FFFFFF;
+    --ink: #2B2A27;
+    --muted: #8A867D;
+    --line: #E8E4DA;
+    --clay: #D97757;
+    --clay-soft: #F4DDD2;
+    --lilac: #EDE7FF;
+    --serif: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: var(--sans); color: var(--ink); background: var(--bg);
+    display: grid; grid-template-columns: minmax(360px, 1fr) minmax(380px, 1fr);
+    height: 100vh; overflow: hidden;
+  }
+
+  /* ---------------- stage ---------------- */
+  .stage {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(120% 90% at 50% 20%, #FFF8F1 0%, #F6ECE2 55%, #EFE3D6 100%);
+    border-right: 1px solid var(--line); padding: 32px;
+  }
+  .brand { position: absolute; top: 24px; left: 28px; font-family: var(--serif); font-size: 22px; letter-spacing: .2px; }
+  .brand b { color: var(--clay); font-weight: 600; }
+  .pills { position: absolute; top: 24px; right: 24px; left: 110px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .pill { font-size: 12px; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,.7); border: 1px solid var(--line); color: var(--muted); }
+  .pill.ok::before { content: "● "; color: #4CAF7A; }
+  .pill.warn::before { content: "● "; color: #E0A43B; }
+
+  .buddy-wrap { position: relative; width: min(380px, 80%); aspect-ratio: 1; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #buddy { width: 100%; height: 100%; overflow: visible; }
+  #buddy .float { animation: bob 3.2s ease-in-out infinite; transform-origin: 150px 260px; }
+  #buddy .shadow { animation: shadow 3.2s ease-in-out infinite; transform-origin: 150px 282px; }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  @keyframes shadow { 0%,100% { transform: scaleX(1); opacity: .22; } 50% { transform: scaleX(.85); opacity: .14; } }
+
+  .eye { transform-box: fill-box; transform-origin: center; animation: blink 5s infinite; }
+  @keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.08); } }
+
+  .mouth-open { transform-box: fill-box; transform-origin: center top; transform: scaleY(0); }
+  .mouth-smile { transition: opacity .15s; }
+  .talking .mouth-open { animation: talk .22s ease-in-out infinite alternate; }
+  .talking .mouth-smile { opacity: 0; }
+  @keyframes talk { from { transform: scaleY(.25); } to { transform: scaleY(1); } }
+
+  .arm { transform-box: fill-box; }
+  .arm.l { transform-origin: right center; }
+  .arm.r { transform-origin: left center; }
+  .listening .arm.l { animation: waveL .6s ease-in-out infinite alternate; }
+  .listening .arm.r { animation: waveR .6s ease-in-out infinite alternate; }
+  @keyframes waveL { from { transform: rotate(0); } to { transform: rotate(18deg); } }
+  @keyframes waveR { from { transform: rotate(0); } to { transform: rotate(-18deg); } }
+
+  .ring { fill: none; stroke: var(--clay); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+  .listening .ring { animation: ring 1.6s ease-out infinite; }
+  .listening .ring.r2 { animation-delay: .5s; }
+  .listening .ring.r3 { animation-delay: 1s; }
+  @keyframes ring { from { transform: scale(.75); opacity: .5; } to { transform: scale(1.25); opacity: 0; } }
+
+  .dots { opacity: 0; transition: opacity .2s; }
+  .thinking .dots { opacity: 1; }
+  .dots circle { animation: dot 1s ease-in-out infinite; }
+  .dots circle:nth-child(2) { animation-delay: .15s; }
+  .dots circle:nth-child(3) { animation-delay: .3s; }
+  @keyframes dot { 0%,100% { transform: translateY(0); opacity: .4; } 50% { transform: translateY(-6px); opacity: 1; } }
+
+  .squish { animation: squish .45s ease; }
+  @keyframes squish { 0% { transform: scale(1,1); } 30% { transform: scale(1.12,.86); } 60% { transform: scale(.94,1.08); } 100% { transform: scale(1,1); } }
+  .squish-target { transform-box: fill-box; transform-origin: center bottom; }
+
+  .status { margin-top: 6px; font-family: var(--serif); font-size: 20px; min-height: 28px; color: var(--ink); text-align: center; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 4px; text-align: center; }
+
+  .controls { display: flex; align-items: center; gap: 16px; margin-top: 22px; }
+  .mic {
+    width: 76px; height: 76px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--clay); color: #fff; box-shadow: 0 10px 24px rgba(217,119,87,.35);
+    display: grid; place-items: center; transition: transform .15s, background .15s;
+  }
+  .mic:hover { transform: translateY(-2px); }
+  .mic.rec { background: #C2410C; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(217,119,87,.5); } 100% { box-shadow: 0 0 0 22px rgba(217,119,87,0); } }
+  .mic svg { width: 30px; height: 30px; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; background: rgba(255,255,255,.7); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; }
+  .toggle input { accent-color: var(--clay); }
+
+  /* ---------------- chat ---------------- */
+  .chat { display: flex; flex-direction: column; background: var(--bg); min-height: 0; }
+  .chat-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 28px; border-bottom: 1px solid var(--line); }
+  .chat-head h2 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 18px; }
+  .ghost { background: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 13px; color: var(--muted); cursor: pointer; }
+  .ghost:hover { background: #fff; color: var(--ink); }
+
+  .messages { flex: 1; overflow-y: auto; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+  .welcome { margin: auto 0; text-align: center; color: var(--muted); }
+  .welcome h1 { font-family: var(--serif); font-weight: 400; font-size: 32px; color: var(--ink); margin: 0 0 8px; }
+  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
+  .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 14px; font-size: 14px; cursor: pointer; color: var(--ink); }
+  .chip:hover { border-color: var(--clay); }
+
+  .msg { max-width: 88%; line-height: 1.6; font-size: 15.5px; white-space: pre-wrap; animation: rise .25s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .msg.user { align-self: flex-end; background: #EDE9E0; padding: 10px 14px; border-radius: 16px 16px 4px 16px; }
+  .msg.bot { align-self: flex-start; display: flex; gap: 12px; }
+  .msg.bot .av { flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--clay-soft); display: grid; place-items: center; font-size: 15px; }
+  .msg.bot .txt { padding-top: 2px; }
+  .typing span { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 50%; background: var(--muted); animation: dot 1s infinite; }
+  .typing span:nth-child(2) { animation-delay: .15s; } .typing span:nth-child(3) { animation-delay: .3s; }
+
+  .card { margin-top: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; white-space: normal; }
+  .card .meta { padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
+  .card .meta b { color: var(--ink); font-weight: 600; }
+  .card .body { padding: 14px 16px; white-space: pre-wrap; font-size: 15px; }
+  .card .actions { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); background: #FCFBF8; }
+  .btn { border: none; border-radius: 9px; padding: 9px 16px; font-size: 14px; cursor: pointer; }
+  .btn.primary { background: var(--clay); color: #fff; }
+  .btn.secondary { background: #fff; border: 1px solid var(--line); color: var(--ink); }
+  .card.done .actions { display: none; }
+
+  .composer { padding: 16px 28px 24px; }
+  .box { display: flex; align-items: flex-end; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 10px 10px 10px 16px; box-shadow: 0 2px 10px rgba(0,0,0,.03); }
+  .box:focus-within { border-color: #D9CFC0; }
+  textarea { flex: 1; border: none; outline: none; resize: none; font: inherit; font-size: 15.5px; max-height: 160px; background: transparent; color: var(--ink); padding: 6px 0; }
+  .send { width: 36px; height: 36px; border-radius: 10px; border: none; background: var(--clay); color: #fff; cursor: pointer; display: grid; place-items: center; }
+  .send:disabled { background: #E6DED3; cursor: default; }
+  .foot { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  /* ---------------- voice mode (hands-free) ---------------- */
+  .vbtn { width: 36px; height: 36px; border-radius: 10px; border: none; background: var(--ink); color: #fff; cursor: pointer; display: grid; place-items: center; }
+  .vbtn:hover { background: #000; }
+  .toggle.wake { margin-top: 10px; }
+  .toggle.wake.live { border-color: var(--clay); color: var(--ink); }
+  .toggle.wake.live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #4CAF7A; animation: pulse 1.6s infinite; }
+  .voice-cta { margin-top: 10px; border: none; border-radius: 999px; padding: 11px 20px; background: var(--ink); color: #fff; font-size: 14.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  .voice-cta:hover { background: #000; }
+
+  .vm { position: fixed; inset: 0; z-index: 50; display: none; flex-direction: column; align-items: center; justify-content: space-between;
+        background: radial-gradient(100% 70% at 50% 40%, #FFFDF9 0%, #F7F0E7 60%, #EFE5D8 100%); padding: 28px 20px 40px; }
+  .vm.open { display: flex; animation: fadein .25s ease; }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  .vm-top { font-family: var(--serif); font-size: 20px; color: var(--ink); text-align: center; min-height: 28px; }
+  .vm-sub { font-size: 13px; color: var(--muted); text-align: center; margin-top: 4px; }
+
+  .orb-wrap { position: relative; width: min(300px, 70vw); aspect-ratio: 1; display: grid; place-items: center; }
+  .orb { width: 100%; height: 100%; border-radius: 50%; position: relative; overflow: hidden;
+         transform: scale(var(--s, 1)); transition: transform .08s linear;
+         box-shadow: 0 30px 80px rgba(217,119,87,.25), inset 0 -20px 60px rgba(255,255,255,.4); }
+  .orb::before { content: ""; position: absolute; inset: -30%;
+         background: conic-gradient(from 0deg, #F6B49B, #D97757, #C9B8F5, #A9D3F5, #F6D7A7, #F6B49B);
+         filter: blur(28px); animation: swirl 7s linear infinite; }
+  .orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%;
+         background: radial-gradient(60% 60% at 35% 30%, rgba(255,255,255,.85), rgba(255,255,255,0) 60%); }
+  @keyframes swirl { to { transform: rotate(360deg); } }
+  .vm.thinking .orb::before { animation-duration: 1.6s; }
+  .vm.talking .orb::before { animation-duration: 3s; }
+  .vm.muted .orb { filter: grayscale(.9) opacity(.6); }
+  .orb-halo { position: absolute; inset: -14%; border-radius: 50%; border: 2px solid rgba(217,119,87,.25); opacity: 0; }
+  .vm.listening .orb-halo { animation: halo 2s ease-out infinite; }
+  @keyframes halo { from { transform: scale(.85); opacity: .7; } to { transform: scale(1.15); opacity: 0; } }
+
+  .captions { max-width: 640px; text-align: center; min-height: 84px; }
+  .cap-user { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+  .cap-bot { font-family: var(--serif); font-size: 21px; line-height: 1.45; color: var(--ink);
+             display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .vm-controls { display: flex; gap: 22px; }
+  .round { width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer; display: grid; place-items: center; transition: transform .15s; }
+  .round:hover { transform: scale(1.05); }
+  .round svg { width: 26px; height: 26px; }
+  .round.mute { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  .round.mute.on { background: var(--ink); color: #fff; }
+  .round.end { background: #E5484D; color: #fff; }
+  .vm-label { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
+
+
+  /* ---------------- connect gmail modal ---------------- */
+  .pill.click { cursor: pointer; }
+  .pill.click:hover { border-color: var(--clay); color: var(--ink); }
+  .modal { position: fixed; inset: 0; z-index: 60; background: rgba(43,42,39,.35); display: none; align-items: center; justify-content: center; padding: 20px; }
+  .modal.open { display: flex; animation: fadein .2s ease; }
+  .sheet { background: #fff; border-radius: 18px; width: min(460px, 100%); padding: 26px; box-shadow: 0 30px 80px rgba(0,0,0,.18); }
+  .sheet h3 { font-family: var(--serif); font-weight: 500; font-size: 24px; margin: 0 0 6px; }
+  .sheet p { color: var(--muted); font-size: 14px; margin: 0 0 18px; line-height: 1.5; }
+  .step { display: flex; gap: 12px; margin-bottom: 14px; font-size: 14.5px; line-height: 1.5; }
+  .step .n { flex: 0 0 24px; height: 24px; border-radius: 50%; background: var(--clay-soft); color: var(--clay); font-weight: 600; font-size: 13px; display: grid; place-items: center; }
+  .step a { color: var(--clay); font-weight: 500; }
+  .field { display: block; margin: 6px 0 12px; }
+  .field span { font-size: 12.5px; color: var(--muted); }
+  .field input { width: 100%; margin-top: 4px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 15px; }
+  .field input:focus { outline: none; border-color: var(--clay); }
+  .field select { width: 100%; margin-top: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 15px; background: #fff; }
+  .field input[type=range] { width: 100%; accent-color: var(--clay); padding: 0; border: none; }
+  .rec-box { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 4px 0 14px; background: #FFFCF8; }
+  .rec-head { display: flex; justify-content: space-between; align-items: center; font-size: 14.5px; margin-bottom: 8px; }
+  .rec-head span { font-size: 12.5px; color: var(--muted); }
+  .rec-script { font-size: 13.5px; line-height: 1.55; margin-bottom: 10px; }
+  .rec-script i { font-family: var(--serif); font-size: 15px; color: var(--ink); }
+  #myRec.on { background: #C2410C; color: #fff; border-color: #C2410C; }
+  .rec-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .vp-tip { background: #FBF6EE; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; line-height: 1.5; color: var(--ink); margin: 4px 0 16px; }
+  .err { color: #C2410C; font-size: 13.5px; min-height: 20px; margin-bottom: 6px; }
+  .sheet .row { display: flex; gap: 8px; justify-content: flex-end; }
+  .sheet .ok-msg { text-align: center; padding: 10px 0; font-size: 15px; }
+
+  @media (max-width: 860px) {
+    body { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; }
+    .stage { border-right: none; border-bottom: 1px solid var(--line); padding: 12px 16px 14px; justify-content: flex-start; }
+    .brand { position: static; align-self: flex-start; font-size: 20px; }
+    .pills { position: static; align-self: stretch; justify-content: flex-start; margin-top: 8px; }
+    .buddy-wrap { width: min(150px, 38vw); margin-top: 4px; }
+    .status { font-size: 16px; min-height: 22px; margin-top: 0; }
+    .hint { display: none; }
+    .voice-cta { margin-top: 8px; padding: 8px 16px; font-size: 14px; }
+    .controls { margin-top: 10px; gap: 10px; }
+    .mic { width: 54px; height: 54px; }
+    .mic svg { width: 24px; height: 24px; }
+    .toggle { padding: 6px 10px; font-size: 12.5px; }
+    .chat-head { padding: 12px 16px; }
+    .messages { padding: 16px; }
+    .composer { padding: 10px 16px 14px; }
+    .welcome h1 { font-size: 26px; }
+  }
+  @media (max-height: 760px) and (max-width: 860px) {
+    .buddy-wrap { width: min(110px, 30vw); }
+  }
+  }
+</style>
+</head>
+<body>
+
+<section class="stage">
+  <div class="brand">My<b>OS</b></div>
+  <div class="pills" id="pills"></div>
+
+  <div class="buddy-wrap" id="buddyWrap" title="Tap me!">
+    <svg id="buddy" viewBox="0 0 300 300" aria-label="Myo, the MyOS buddy">
+      <defs>
+        <radialGradient id="bodyG" cx="40%" cy="30%" r="80%">
+          <stop offset="0%" stop-color="#FFFFFF"/>
+          <stop offset="70%" stop-color="#F3EEFF"/>
+          <stop offset="100%" stop-color="#E2D8FA"/>
+        </radialGradient>
+      </defs>
+
+      <ellipse class="shadow" cx="150" cy="282" rx="78" ry="10" fill="#7A5C48"/>
+
+      <g class="ring r1"><circle cx="150" cy="170" r="125"/></g>
+      <g class="ring r2"><circle cx="150" cy="170" r="125"/></g>
+      <g class="ring r3"><circle cx="150" cy="170" r="125"/></g>
+
+      <g class="float">
+        <g class="squish-target" id="squish">
+          <!-- arms -->
+          <ellipse class="arm l" cx="58" cy="200" rx="22" ry="14" fill="url(#bodyG)" stroke="#D9CCF5" stroke-width="2"/>
+          <ellipse class="arm r" cx="242" cy="200" rx="22" ry="14" fill="url(#bodyG)" stroke="#D9CCF5" stroke-width="2"/>
+
+          <!-- cloud body -->
+          <g fill="url(#bodyG)" stroke="#D9CCF5" stroke-width="2">
+            <circle cx="105" cy="120" r="48"/>
+            <circle cx="170" cy="100" r="58"/>
+            <circle cx="215" cy="140" r="42"/>
+            <rect x="62" y="120" width="176" height="130" rx="62"/>
+          </g>
+          <!-- hide inner seams -->
+          <g fill="url(#bodyG)">
+            <circle cx="105" cy="122" r="45"/>
+            <circle cx="170" cy="102" r="55"/>
+            <circle cx="215" cy="142" r="39"/>
+            <rect x="65" y="125" width="170" height="122" rx="58"/>
+          </g>
+
+          <!-- cheeks -->
+          <ellipse cx="98" cy="196" rx="16" ry="9" fill="#F7B9A5" opacity=".7"/>
+          <ellipse cx="202" cy="196" rx="16" ry="9" fill="#F7B9A5" opacity=".7"/>
+
+          <!-- eyes -->
+          <g class="eye">
+            <ellipse cx="118" cy="162" rx="17" ry="21" fill="#2B2A27"/>
+            <circle class="shine" cx="124" cy="154" r="6" fill="#fff"/>
+          </g>
+          <g class="eye">
+            <ellipse cx="182" cy="162" rx="17" ry="21" fill="#2B2A27"/>
+            <circle class="shine" cx="188" cy="154" r="6" fill="#fff"/>
+          </g>
+
+          <!-- mouth -->
+          <path class="mouth-smile" d="M134 200 Q150 214 166 200" fill="none" stroke="#2B2A27" stroke-width="4" stroke-linecap="round"/>
+          <g class="mouth-open">
+            <path d="M132 198 Q150 198 168 198 Q166 226 150 228 Q134 226 132 198 Z" fill="#5A2E2A"/>
+            <ellipse cx="150" cy="220" rx="10" ry="5" fill="#E9806B"/>
+          </g>
+        </g>
+
+        <!-- thinking dots -->
+        <g class="dots" fill="#D97757">
+          <circle cx="226" cy="44" r="6"/>
+          <circle cx="246" cy="34" r="6"/>
+          <circle cx="266" cy="24" r="6"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="status" id="status">Hi! I'm Myo.</div>
+  <div class="hint" id="hint">Tap the mic and talk, or press and hold Space</div>
+  <label class="toggle wake" id="wakeLbl" title="MyOS keeps listening in this tab. Say “Baby” and then what you want.">
+    <input type="checkbox" id="wakeOn"/> <span id="wakeTxt">Listen for “Baby”</span>
+  </label>
+  <button class="voice-cta" id="voiceCta">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+    Start voice chat
+  </button>
+
+  <div class="controls">
+    <label class="toggle" title="Talking-Tom style: I repeat what you say in a funny voice">
+      <input type="checkbox" id="echo"/> Echo mode
+    </label>
+    <button class="mic" id="mic" aria-label="Talk">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/>
+      </svg>
+    </button>
+    <label class="toggle" title="Read answers out loud">
+      <input type="checkbox" id="voiceOn" checked/> Voice
+    </label>
+  </div>
+</section>
+
+<section class="chat">
+  <div class="chat-head">
+    <h2>Conversation</h2>
+    <button class="ghost" id="newChat">New chat</button>
+  </div>
+  <div class="messages" id="messages">
+    <div class="welcome" id="welcome">
+      <h1 id="greet">Hello, Sriya</h1>
+      <div>Ask me anything, or tell me who to email.</div>
+      <div class="chips">
+        <button class="chip">What is cloud computing?</button>
+        <button class="chip">Send a mail to Rajini saying hi from MyOS</button>
+        <button class="chip">Read my unread emails</button>
+        <button class="chip">Give me 3 tips for my internship interview</button>
+      </div>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="box">
+      <textarea id="input" rows="1" placeholder="Message MyOS…"></textarea>
+      <button class="vbtn" id="voiceBtn" title="Voice chat" aria-label="Voice chat">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+      </button>
+      <button class="send" id="send" disabled aria-label="Send">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+    </div>
+    <div class="foot">MyOS always asks before sending anything.</div>
+  </div>
+</section>
+
+<div class="vm" id="vm">
+  <div>
+    <div class="vm-top" id="vmStatus">Starting…</div>
+    <div class="vm-sub" id="vmSub">Just talk — I'll know when you're done. Tap the orb to interrupt me.</div>
+  </div>
+  <div class="orb-wrap"><div class="orb-halo"></div><div class="orb" id="orb"></div></div>
+  <div class="captions">
+    <div class="cap-user" id="capUser"></div>
+    <div class="cap-bot" id="capBot"></div>
+  </div>
+  <div>
+    <div class="vm-controls">
+      <div><button class="round mute" id="vmMute" aria-label="Mute">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button><div class="vm-label" id="muteLabel">Mute</div></div>
+      <div><button class="round end" id="vmEnd" aria-label="End voice chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button><div class="vm-label">End</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="vp">
+  <div class="sheet">
+    <h3>Choose Myo's voice</h3>
+    <p>Pick a voice and tap Preview. Your choice is remembered.</p>
+    <label class="field"><span>Voice</span><select id="vpVoice"></select></label>
+    <div class="rec-box" id="myBox" hidden>
+      <div class="rec-head"><b>🎙️ Your own voice</b><span id="myStatus"></span></div>
+      <div class="rec-script">In a quiet spot, read this out loud in your normal voice:<br>
+        <i>“Hi, I'm Sriya. I'm building MyOS, a voice assistant that reads my emails, answers my questions and helps me every day.”</i></div>
+      <button class="btn secondary" id="myRec">● Record my voice</button>
+      <div class="rec-note">Your recording stays on your Mac. MyOS only uses it to speak to you.</div>
+    </div>
+    <label class="field"><span>Speed <b id="vpRateV"></b></span><input id="vpRate" type="range" min="0.7" max="1.4" step="0.05"/></label>
+    <label class="field"><span>Pitch <b id="vpPitchV"></b></span><input id="vpPitch" type="range" min="0.7" max="1.4" step="0.05"/></label>
+    <div class="vp-tip">💡 Want a much more natural voice, free? On your Mac open <b>System Settings → Accessibility → Spoken Content → System voice → Manage Voices</b>, download <b>Ava (Premium)</b>, <b>Zoe (Premium)</b> or <b>Serena (Premium)</b>, then reload this page and pick it here.</div>
+    <div class="row">
+      <button class="btn secondary" id="vpPreview">▶ Preview</button>
+      <button class="btn primary" id="vpDone">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="cl">
+  <div class="sheet">
+    <h3>Connect Claude</h3>
+    <p>Give MyOS a much smarter brain with live web search. Your key is saved only on your Mac. Claude charges for what you use — a few pence a day for personal use.</p>
+    <div id="clSteps">
+      <div class="step"><div class="n">1</div><div>Open the <a href="https://console.anthropic.com/" target="_blank" rel="noopener">Claude Console</a>, sign up, and add a little credit under Billing.</div></div>
+      <div class="step"><div class="n">2</div><div>Go to <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">API keys</a>, click <b>Create key</b>, name it <b>MyOS</b>, and copy it.</div></div>
+      <div class="step"><div class="n">3</div><div>Paste it here:</div></div>
+      <label class="field"><span>Claude API key</span><input id="clKey" type="password" placeholder="sk-ant-…" autocomplete="off"/></label>
+    </div>
+    <div class="err" id="clErr"></div>
+    <div class="row">
+      <button class="btn secondary" id="clOff" hidden>Use the free brain instead</button>
+      <button class="btn secondary" id="clCancel">Close</button>
+      <button class="btn primary" id="clGo">Connect</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="gm">
+  <div class="sheet" id="gmSheet">
+    <h3>Connect Gmail</h3>
+    <p>MyOS uses a Google <b>app password</b> — a separate 16-letter key just for MyOS. It stays on your Mac, and you can delete it any time in your Google account.</p>
+    <div class="step"><div class="n">1</div><div>Make sure <a href="https://myaccount.google.com/signinoptions/twosv" target="_blank" rel="noopener">2-Step Verification</a> is on.</div></div>
+    <div class="step"><div class="n">2</div><div>Open <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">App passwords</a>, type <b>MyOS</b> as the name, click <b>Create</b>, and copy the 16 letters.</div></div>
+    <div class="step"><div class="n">3</div><div>Paste them here:</div></div>
+    <label class="field"><span>Gmail address</span><input id="gmEmail" type="email" autocomplete="email"/></label>
+    <label class="field"><span>App password</span><input id="gmPass" type="password" placeholder="xxxx xxxx xxxx xxxx" autocomplete="off"/></label>
+    <div class="err" id="gmErr"></div>
+    <div class="row">
+      <button class="btn secondary" id="gmCancel">Cancel</button>
+      <button class="btn primary" id="gmGo">Connect</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let NAME = "there";
+const wrap = $("buddyWrap"), statusEl = $("status"), msgs = $("messages");
+const input = $("input"), sendBtn = $("send"), micBtn = $("mic");
+let busy = false, lastExpectsReply = false;
+
+/* ---------------- character states ---------------- */
+const LABELS = { idle: "", listening: "Listening…", thinking: "Thinking…", talking: "" };
+function setState(s, label) {
+  wrap.classList.remove("listening", "thinking", "talking");
+  if (s !== "idle") wrap.classList.add(s);
+  if (label !== undefined) statusEl.textContent = label;
+  else if (LABELS[s]) statusEl.textContent = LABELS[s];
+}
+
+// eyes follow the mouse
+const shines = document.querySelectorAll("#buddy .shine");
+const shineBase = [...shines].map(s => [ +s.getAttribute("cx"), +s.getAttribute("cy") ]);
+document.addEventListener("mousemove", (e) => {
+  const r = wrap.getBoundingClientRect();
+  const dx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (r.width)));
+  const dy = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (r.height)));
+  shines.forEach((s, i) => {
+    s.setAttribute("cx", shineBase[i][0] + dx * 7 - 3);
+    s.setAttribute("cy", shineBase[i][1] + dy * 8 + 2);
+  });
+});
+
+// tap to tickle
+const GIGGLES = ["Hehe, that tickles!", "Hey! I'm working here!", "Boop! Need something?", "Ooh, do that again!", "I'm made of cloud, you know."];
+wrap.addEventListener("click", () => {
+  const sq = $("squish");
+  sq.classList.remove("squish"); void sq.getBBox(); sq.classList.add("squish");
+  if (busy || recording) return;
+  const line = GIGGLES[Math.floor(Math.random() * GIGGLES.length)];
+  say(line);
+});
+
+/* ---------------- voice out ---------------- */
+/* ---------------- voice settings ---------------- */
+const NOVELTY = /Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Wobble|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Zarvox|Albert|Fred|Junior|Ralph|Grandma|Grandpa|Rocko|Eddy/i;
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+                set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+let voice = null;
+let VOICE_RATE = parseFloat(store.get("myosRate", "1")), VOICE_PITCH = parseFloat(store.get("myosPitch", "1"));
+function englishVoices() {
+  return speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang) && !NOVELTY.test(v.name));
+}
+function pickVoice() {
+  const vs = englishVoices();
+  const saved = store.get("myosVoice", "");
+  voice = vs.find(v => v.name === saved) ||
+          vs.find(v => /Premium|Enhanced/i.test(v.name)) ||
+          vs.find(v => /Samantha/i.test(v.name)) ||
+          vs.find(v => /en-GB/i.test(v.lang)) || vs[0] || null;
+  try { if (STATUS.name) loadStatus(); } catch (e) {}   // refresh the voice badge
+}
+speechSynthesis.onvoiceschanged = pickVoice; pickVoice();
+
+// split into sentences so long answers never get cut off
+function sentences(text, max = 220) {
+  const parts = text.replace(/\s+/g, " ").match(/[^.!?]+[.!?]*\s*/g) || [text];
+  const out = []; let cur = "";
+  for (const p of parts) { if ((cur + p).length > max && cur) { out.push(cur); cur = p; } else cur += p; }
+  if (cur.trim()) out.push(cur);
+  return out;
+}
+
+/* ---------------- speaking in YOUR voice ---------------- */
+const MINE = "__mine__";
+let MYVOICE = { installed: false, ready: false, has_voice: false };
+let curAudio = null, curFinish = null;
+const NATURAL = [["af_heart", "Heart · American"], ["bf_emma", "Emma · British"], ["af_bella", "Bella · American"],
+  ["bf_isabella", "Isabella · British"], ["af_nova", "Nova · American"], ["bm_george", "George · British (male)"],
+  ["am_michael", "Michael · American (male)"]];
+// which engine voice to use: "mine", "nat:<name>", or null for the Mac's built-in voices
+function engineVoice() {
+  const v = store.get("myosVoice", "");
+  if (v === MINE && MYVOICE.has_voice) return "mine";
+  if (v.startsWith("nat:") && MYVOICE.natural) return v;
+  return null;
+}
+function usingMine() { return engineVoice() !== null; }
+function stopSpeaking() {
+  speechSynthesis.cancel();
+  if (curAudio) { const a = curAudio; curAudio = null; a.pause(); a._res && a._res(false); }
+  if (curFinish) { const f = curFinish; curFinish = null; f(); }
+}
+async function refreshMyVoice() {
+  try { MYVOICE = await (await fetch("/api/voice/status")).json(); } catch (e) {}
+  return MYVOICE;
+}
+function ttsMine(text) {
+  return fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, voice: engineVoice() || "mine" }) })
+    .then(r => r.ok ? r.blob() : null).catch(() => null);
+}
+function playBlob(blob) {
+  return new Promise((res) => {
+    const a = new Audio(URL.createObjectURL(blob));
+    curAudio = a; a._res = res;
+    a.onplay = () => setState("talking");
+    a.onended = a.onerror = () => { if (curAudio === a) curAudio = null; res(true); };
+    a.play().catch(() => res(false));
+  });
+}
+async function sayMine(parts, finish) {
+  let stopped = false;
+  curFinish = () => { stopped = true; finish(); };
+  let next = ttsMine(parts[0]);              // make the next sentence while this one plays
+  for (let k = 0; k < parts.length; k++) {
+    const blob = await next;
+    if (stopped) return;
+    next = k + 1 < parts.length ? ttsMine(parts[k + 1]) : null;
+    if (!blob) {                               // voice service not ready: fall back for this sentence
+      await new Promise(r => { const u = new SpeechSynthesisUtterance(parts[k]); u.onend = u.onerror = r; speechSynthesis.speak(u); });
+    } else {
+      await playBlob(blob);
+    }
+    if (stopped) return;
+  }
+  curFinish = null; finish();
+}
+
+// speaks sentences as they arrive, so the first words come out while the rest is still being written
+function startSpeaker() {
+  stopSpeaking();
+  const on = $("voiceOn").checked, ev = engineVoice();
+  let stopped = false, chain = Promise.resolve();
+  curFinish = () => { stopped = true; };
+  lastSpoken = "";
+  return {
+    push(text) {
+      text = text.trim();
+      if (!text) return;
+      lastSpoken += " " + text;
+      if (stopped || !on) return;
+      const blobP = ev ? ttsMine(text) : null;          // start making the audio right away
+      chain = chain.then(async () => {
+        if (stopped) return;
+        const blob = blobP ? await blobP : null;
+        if (stopped) return;
+        if (VM.on && VM.phase !== "talking") vmSet("talking");
+        if (blob) { await playBlob(blob); return; }
+        await new Promise((r) => {
+          const u = new SpeechSynthesisUtterance(text);
+          if (voice) { u.voice = voice; u.lang = voice.lang; }
+          u.rate = VOICE_RATE; u.pitch = VOICE_PITCH;
+          u.onstart = () => setState("talking");
+          u.onend = u.onerror = r;
+          speechSynthesis.speak(u);
+          setTimeout(r, 5000 + 120 * text.length);
+        });
+      });
+    },
+    async finish() { await chain; curFinish = null; setState("idle"); },
+  };
+}
+
+async function streamReply(res, bubble) {
+  const txt = bubble.querySelector(".txt");
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  const sp = startSpeaker();
+  let full = "", upTo = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    full += dec.decode(value, { stream: true });
+    txt.textContent = full; scroll();
+    if (VM.on) $("capBot").textContent = full;
+    // the very first thing spoken is just the opening phrase (up to a comma), so the voice starts sooner
+    const re = upTo === 0 ? /[.!?,;:]+["')\]]*\s+/g : /[.!?]+["')\]]*\s+/g; re.lastIndex = upTo;
+    let end = upTo, m;
+    while ((m = re.exec(full))) { end = re.lastIndex; if (upTo === 0 && end >= 14) break; }
+    if (end - upTo >= (upTo === 0 ? 14 : 12)) { sp.push(full.slice(upTo, end)); upTo = end; }
+  }
+  sp.push(full.slice(upTo));
+  if (!full.trim()) txt.textContent = "…";
+  await sp.finish();
+}
+
+function say(text, opts = {}) {
+  return new Promise((resolve) => {
+    statusEl.textContent = opts.label ?? "";
+    lastSpoken = text;
+    if (VM.on) { $("capBot").textContent = text; vmSet("talking"); }
+    if (!$("voiceOn").checked || !text) {
+      setState("talking"); setTimeout(() => { setState("idle"); resolve(); }, Math.min(2500, 40 * text.length));
+      return;
+    }
+    stopSpeaking();
+    let done = false;
+    const finish = () => { if (done) return; done = true; setState("idle"); resolve(); };
+    const parts = sentences(text, engineVoice() === "mine" ? 90 : usingMine() ? 150 : 220);
+    if (usingMine() && !opts.system) {
+      if (VM.on) vmSet("talking");
+      sayMine(parts, finish);
+      setTimeout(finish, 20000 + 300 * text.length);   // safety net
+      return;
+    }
+    parts.forEach((part, i) => {
+      const u = new SpeechSynthesisUtterance(part);
+      if (voice) { u.voice = voice; u.lang = voice.lang; }
+      u.rate = VOICE_RATE; u.pitch = opts.pitch || VOICE_PITCH;
+      if (i === 0) u.onstart = () => setState("talking");
+      u.onerror = finish;
+      if (i === parts.length - 1) u.onend = finish;
+      speechSynthesis.speak(u);
+    });
+    setTimeout(finish, Math.max(6000, 120 * text.length / VOICE_RATE));   // safety net if the browser blocks speech
+  });
+}
+
+/* ---------------- chat UI ---------------- */
+function hideWelcome() { const w = $("welcome"); if (w) w.remove(); }
+function scroll() { msgs.scrollTop = msgs.scrollHeight; }
+
+function addUser(text) {
+  hideWelcome();
+  const d = document.createElement("div");
+  d.className = "msg user"; d.textContent = text;
+  msgs.appendChild(d); scroll();
+}
+function addBot(text) {
+  hideWelcome();
+  const d = document.createElement("div");
+  d.className = "msg bot";
+  d.innerHTML = '<div class="av">☁️</div><div class="txt"></div>';
+  d.querySelector(".txt").textContent = text;
+  msgs.appendChild(d); scroll();
+  return d;
+}
+function addTyping() {
+  const d = addBot("");
+  d.querySelector(".txt").innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+  return d;
+}
+function addDraft(r) {
+  const d = addBot(r.reply);
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+    <div class="meta">To <b></b> &lt;<span class="addr"></span>&gt;<br>Subject <b class="subj"></b></div>
+    <div class="body"></div>
+    <div class="actions">
+      <button class="btn primary">Send</button>
+      <button class="btn secondary" data-a="no">Cancel</button>
+    </div>`;
+  card.querySelector(".meta b").textContent = r.to || "";
+  card.querySelector(".addr").textContent = r.addr || "";
+  card.querySelector(".subj").textContent = r.subject || "";
+  card.querySelector(".body").textContent = r.body || "";
+  card.querySelector(".primary").onclick = () => { card.classList.add("done"); send("yes, send it"); };
+  card.querySelector("[data-a=no]").onclick = () => { card.classList.add("done"); send("no, cancel"); };
+  document.querySelectorAll(".card").forEach(c => c.classList.add("done"));
+  d.querySelector(".txt").appendChild(card);
+  scroll();
+}
+
+async function send(text) {
+  text = (text || "").trim();
+  if (!text || busy) return;
+  // "change your voice" opens the voice menu instead of asking the brain
+  if (/\b(change|switch|different|another|new)\b.*\bvoice\b/i.test(text) && text.length < 60) {
+    addUser(text);
+    if (VM.on) vmClose();
+    await openVoiceAsync();
+    const m = "Sure! Pick a voice from the list. The ones marked Natural sound most human.";
+    addBot(m); say(m);
+    return;
+  }
+  busy = true; sendBtn.disabled = true;
+  addUser(text);
+  stopSpeaking();
+  setState("thinking");
+  const t = addTyping();
+  let r, streamed = false;
+  try {
+    const res = await fetch("/api/message", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    if ((res.headers.get("Content-Type") || "").startsWith("text/plain")) { streamed = true; await streamReply(res, t); }
+    else r = await res.json();
+  } catch (e) {
+    if (!streamed) r = { type: "chat", reply: "I can't reach MyOS. Is the server still running in Terminal?" };
+  }
+  lastExpectsReply = !!(r && (r.expects_reply || r.type === "draft"));
+  if (streamed) { /* already shown and spoken */ }
+  else if (t.remove(), r.type === "draft") {
+    addDraft(r);
+    await say(r.reply + " " + (r.body || ""));
+  } else {
+    addBot(r.reply || "…");
+    await say(r.reply);
+  }
+  busy = false; sendBtn.disabled = !input.value.trim();
+  statusEl.textContent = "";
+}
+
+input.addEventListener("input", () => {
+  sendBtn.disabled = !input.value.trim() || busy;
+  input.style.height = "auto"; input.style.height = input.scrollHeight + "px";
+});
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); const v = input.value; input.value = ""; input.dispatchEvent(new Event("input")); send(v); }
+});
+sendBtn.onclick = () => { const v = input.value; input.value = ""; input.dispatchEvent(new Event("input")); send(v); };
+document.querySelectorAll(".chip").forEach(c => c.onclick = () => send(c.textContent));
+
+$("newChat").onclick = async () => {
+  await fetch("/api/reset", { method: "POST" });
+  location.reload();
+};
+
+/* ---------------- voice in ---------------- */
+let recorder = null, chunks = [], recording = false, stream = null;
+
+async function startRec() {
+  if (recording || busy || VM.on) return;
+  stopSpeaking();
+  try {
+    stream = stream || await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    addBot("I can't use the microphone. Please allow mic access for this page in your browser settings.");
+    return;
+  }
+  chunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  recorder.onstop = handleRecording;
+  recorder.start();
+  recording = true;
+  micBtn.classList.add("rec");
+  setState("listening");
+}
+function stopRec() {
+  if (!recording) return;
+  recording = false;
+  micBtn.classList.remove("rec");
+  recorder.stop();
+}
+
+async function handleRecording() {
+  const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+  if (blob.size < 2000) { setState("idle", "I didn't hear anything — try again?"); return; }
+
+  if ($("echo").checked) {             // Talking-Tom style repeat
+    const a = new Audio(URL.createObjectURL(blob));
+    a.preservesPitch = false; a.mozPreservesPitch = false; a.webkitPreservesPitch = false;
+    a.playbackRate = 1.6;
+    setState("talking", "");
+    a.onended = () => setState("idle");
+    a.play();
+    return;
+  }
+
+  setState("thinking", "Hearing you…");
+  const fd = new FormData(); fd.append("audio", blob, "voice.webm");
+  let text = "";
+  try { text = (await (await fetch("/api/transcribe", { method: "POST", body: fd })).json()).text; } catch (e) {}
+  if (!text) { setState("idle", "Sorry, I didn't catch that."); return; }
+  send(text);
+}
+
+micBtn.onclick = () => recording ? stopRec() : startRec();
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && document.activeElement !== input && !e.repeat) { e.preventDefault(); startRec(); }
+});
+document.addEventListener("keyup", (e) => {
+  if (e.code === "Space" && document.activeElement !== input) { e.preventDefault(); stopRec(); }
+});
+
+/* ---------------- hands-free voice mode (ChatGPT-style) ---------------- */
+const VM = {
+  on: false, muted: false, phase: "off", stream: null, ctx: null, analyser: null, buf: null,
+  rec: null, chunks: [], speechMs: 0, silenceAt: 0, recStart: 0, loudMs: 0, last: 0,
+  floor: 0.01, thresh: 0.025, level: 0,
+};
+const vmEl = $("vm"), orb = $("orb");
+
+function vmSet(phase) {
+  VM.phase = phase;
+  vmEl.classList.remove("listening", "thinking", "talking");
+  if (phase !== "off") vmEl.classList.add(phase);
+  $("vmStatus").textContent = VM.muted ? "Muted" :
+    { listening: "Listening", thinking: "Thinking", talking: "Speaking" }[phase] || "";
+  setState(phase === "talking" ? "talking" : phase === "off" ? "idle" : phase, "");
+}
+
+async function vmOpen() {
+  if (VM.on) return;
+  stopSpeaking();
+  try {
+    VM.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  } catch (e) { addBot("I need microphone access for voice chat. Please allow it in your browser."); return; }
+  VM.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = VM.ctx.createMediaStreamSource(VM.stream);
+  VM.analyser = VM.ctx.createAnalyser(); VM.analyser.fftSize = 1024;
+  VM.buf = new Float32Array(VM.analyser.fftSize);
+  src.connect(VM.analyser);
+  VM.on = true; VM.muted = false;
+  $("capUser").textContent = ""; $("capBot").textContent = "";
+  vmEl.classList.add("open"); vmEl.classList.remove("muted");
+  $("vmStatus").textContent = "Getting ready…";
+
+  // learn how noisy the room is for ~0.6s
+  const samples = [];
+  const t0 = performance.now();
+  await new Promise((res) => {
+    (function cal() { samples.push(rms()); performance.now() - t0 < 600 ? requestAnimationFrame(cal) : res(); })();
+  });
+  VM.floor = samples.reduce((a, b) => a + b, 0) / samples.length;
+  VM.thresh = Math.max(0.03, VM.floor * 4);
+  VM.last = performance.now();
+  requestAnimationFrame(vmLoop);
+  await say(`Hey ${NAME}, I'm listening.`);
+  vmListen();
+}
+
+function vmClose() {
+  VM.on = false;
+  stopSpeaking();
+  if (VM.rec && VM.rec.state !== "inactive") { VM.rec.onstop = null; VM.rec.stop(); }
+  VM.stream && VM.stream.getTracks().forEach(t => t.stop());
+  VM.ctx && VM.ctx.close();
+  VM.stream = VM.ctx = null;
+  vmEl.classList.remove("open");
+  vmSet("off");
+}
+
+function rms() {
+  if (!VM.analyser) return 0;
+  VM.analyser.getFloatTimeDomainData(VM.buf);
+  let s = 0; for (let i = 0; i < VM.buf.length; i++) s += VM.buf[i] * VM.buf[i];
+  return Math.sqrt(s / VM.buf.length);
+}
+
+function vmListen() {
+  if (!VM.on || VM.phase === "listening" || VM.phase === "waiting") return;
+  VM.phase = "waiting";
+  setTimeout(vmStartRec, 350);
+}
+function vmStartRec() {
+  if (!VM.on) return;
+  VM.chunks = []; VM.speechMs = 0; VM.silenceAt = 0; VM.recStart = performance.now();
+  VM.rec = new MediaRecorder(VM.stream);
+  VM.rec.ondataavailable = (e) => e.data.size && VM.chunks.push(e.data);
+  VM.rec.onstop = vmUtterance;
+  VM.rec.start();
+  vmSet("listening");
+}
+
+async function vmUtterance() {
+  if (!VM.on) return;
+  if (VM.speechMs < 450) { VM.phase = "idle"; vmListen(); return; }   // just noise — keep listening
+  vmSet("thinking");
+  const blob = new Blob(VM.chunks, { type: VM.rec.mimeType || "audio/webm" });
+  const fd = new FormData(); fd.append("audio", blob, "voice.webm");
+  let text = "";
+  try { text = (await (await fetch("/api/transcribe", { method: "POST", body: fd })).json()).text; } catch (e) {}
+  if (!VM.on) return;
+  if (!text || text.length < 2 || isEcho(text)) { VM.phase = "idle"; vmListen(); return; }
+  if (/^(bye|goodbye|stop|end (the )?(call|chat)|that's all)\b/i.test(text.trim())) {
+    $("capUser").textContent = text; await say("Bye! Talk soon."); vmClose(); return;
+  }
+  $("capUser").textContent = "“" + text + "”";
+  $("capBot").textContent = "";
+  await send(text);
+  if (VM.on && VM.phase !== "listening") { VM.phase = "idle"; vmListen(); }
+}
+
+let lastSpoken = "";
+function isEcho(heard) {
+  const words = (t) => t.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(w => w.length > 2);
+  const h = words(heard), said = new Set(words(lastSpoken));
+  if (!h.length || !said.size) return false;
+  return h.filter(w => said.has(w)).length / h.length > 0.6;   // mostly MyOS's own words = echo
+}
+
+function vmLoop(now) {
+  if (!VM.on) return;
+  const dt = now - VM.last; VM.last = now;
+  const lv = VM.muted ? 0 : rms();
+  VM.level = VM.level * 0.7 + lv * 0.3;
+
+  // orb reacts to your voice, and "breathes" while MyOS talks
+  let s = 1;
+  if (VM.phase === "listening") s = 1 + Math.min(0.35, VM.level * 6);
+  else if (VM.phase === "talking") s = 1 + 0.06 + Math.sin(now / 110) * 0.04 + Math.sin(now / 47) * 0.02;
+  else if (VM.phase === "thinking") s = 0.94 + Math.sin(now / 300) * 0.03;
+  orb.style.setProperty("--s", s.toFixed(3));
+
+  if (VM.phase === "listening" && !VM.muted) {
+    if (lv > VM.thresh) { VM.speechMs += dt; VM.silenceAt = 0; }
+    else if (VM.speechMs > 450) {
+      if (!VM.silenceAt) VM.silenceAt = now;
+      else if (now - VM.silenceAt > 500) {                 // 0.5s pause = you're done
+        VM.phase = "sending"; VM.rec.stop();
+      }
+    }
+    // nothing said for 20s: restart the recording so it doesn't grow forever
+    if (VM.speechMs === 0 && now - VM.recStart > 20000) { VM.rec.onstop = null; VM.rec.stop(); VM.phase = "idle"; vmListen(); }
+  }
+
+  requestAnimationFrame(vmLoop);
+}
+
+$("voiceBtn").onclick = vmOpen;
+$("voiceCta").onclick = vmOpen;
+$("vmEnd").onclick = vmClose;
+// tap the orb to interrupt MyOS while it's talking
+document.querySelector(".orb-wrap").addEventListener("click", () => {
+  if (VM.on && VM.phase === "talking") { stopSpeaking(); }
+});
+$("vmMute").onclick = () => {
+  VM.muted = !VM.muted;
+  $("vmMute").classList.toggle("on", VM.muted);
+  vmEl.classList.toggle("muted", VM.muted);
+  $("muteLabel").textContent = VM.muted ? "Unmute" : "Mute";
+  VM.stream && VM.stream.getAudioTracks().forEach(t => t.enabled = !VM.muted);
+  vmSet(VM.phase);
+};
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && VM.on) vmClose(); });
+
+/* ---------------- status pills + Gmail connect ---------------- */
+let STATUS = {};
+async function loadStatus() {
+  try { STATUS = await (await fetch("/api/status")).json(); } catch (e) { return; }
+  NAME = STATUS.name; $("greet") && ($("greet").textContent = `Hello, ${STATUS.name}`);
+  const p = $("pills"); p.innerHTML = "";
+  const add = (txt, cls, onclick, title) => {
+    const el = document.createElement("span"); el.className = "pill " + cls; el.textContent = txt;
+    if (onclick) { el.classList.add("click"); el.onclick = onclick; }
+    if (title) el.title = title;
+    p.appendChild(el);
+  };
+  add(STATUS.claude ? "🧠 " + STATUS.brain : "🧠 Free brain · upgrade", STATUS.claude ? "ok" : "warn", openClaude,
+      STATUS.claude ? "Claude is connected. Click to change." : "Click to connect Claude for much smarter answers");
+  add("🔊 " + (engineVoice() === "mine" ? "My voice" : usingMine() ? "Natural voice" : voice ? voice.name.replace(/ \(.*\)$/, "") : "Voice"), "ok", openVoiceAsync, "Change Myo's voice");
+  add(STATUS.gmail ? "Gmail connected" : "Connect Gmail", STATUS.gmail ? "ok" : "warn", openGmail,
+      STATUS.gmail ? STATUS.email : "Click to connect your Gmail");
+  add(STATUS.dry_run ? "Practice mode" : "Live sending", STATUS.dry_run ? "warn" : "ok", togglePractice,
+      STATUS.dry_run ? "Emails are NOT really sent. Click to go live." : "Emails really send (after you say yes). Click for practice mode.");
+}
+async function togglePractice() {
+  if (STATUS.dry_run && !STATUS.gmail) { openGmail(); return; }
+  await fetch("/api/practice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on: !STATUS.dry_run }) });
+  await loadStatus();
+  addBot(STATUS.dry_run ? "Practice mode on — I won't really send emails." : "Live mode on — emails really send, but only after you say yes.");
+}
+function openClaude() {
+  $("clKey").value = ""; $("clErr").textContent = "";
+  $("clOff").hidden = !STATUS.claude;
+  $("clGo").textContent = STATUS.claude ? "Replace key" : "Connect";
+  $("cl").classList.add("open");
+  setTimeout(() => $("clKey").focus(), 50);
+}
+function closeClaude() { $("cl").classList.remove("open"); }
+function openGmail() {
+  $("gmEmail").value = STATUS.email && !/example/.test(STATUS.email) ? STATUS.email : "";
+  $("gmPass").value = ""; $("gmErr").textContent = "";
+  $("gm").classList.add("open");
+  setTimeout(() => ($("gmEmail").value ? $("gmPass") : $("gmEmail")).focus(), 50);
+}
+function closeGmail() { $("gm").classList.remove("open"); }
+$("clCancel").onclick = closeClaude;
+$("cl").addEventListener("click", (e) => { if (e.target.id === "cl") closeClaude(); });
+$("clKey").addEventListener("keydown", (e) => { if (e.key === "Enter") $("clGo").click(); });
+$("clGo").onclick = async () => {
+  const btn = $("clGo"); btn.disabled = true; btn.textContent = "Checking…"; $("clErr").textContent = "";
+  let r = { ok: false, error: "MyOS isn't running." };
+  try {
+    r = await (await fetch("/api/claude/connect", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: $("clKey").value }) })).json();
+  } catch (e) {}
+  btn.disabled = false; btn.textContent = "Connect"; $("clKey").value = "";
+  if (!r.ok) { $("clErr").textContent = r.error; return; }
+  closeClaude(); await loadStatus();
+  const msg = "Claude is connected. Ask me anything, including today's news.";
+  addBot(msg); say(msg);
+};
+$("clOff").onclick = async () => {
+  await fetch("/api/claude/disconnect", { method: "POST" });
+  closeClaude(); await loadStatus(); addBot("Okay, I'm back on the free brain.");
+};
+$("gmCancel").onclick = closeGmail;
+$("gm").addEventListener("click", (e) => { if (e.target.id === "gm") closeGmail(); });
+$("gmPass").addEventListener("keydown", (e) => { if (e.key === "Enter") $("gmGo").click(); });
+$("gmGo").onclick = async () => {
+  const btn = $("gmGo"); btn.disabled = true; btn.textContent = "Checking…"; $("gmErr").textContent = "";
+  let r = { ok: false, error: "MyOS isn't running." };
+  try {
+    r = await (await fetch("/api/gmail/connect", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: $("gmEmail").value, password: $("gmPass").value }) })).json();
+  } catch (e) {}
+  btn.disabled = false; btn.textContent = "Connect";
+  if (!r.ok) { $("gmErr").textContent = r.error; return; }
+  closeGmail();
+  if (STATUS.dry_run) await fetch("/api/practice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on: false }) });
+  await loadStatus();
+  const msg = "Gmail is connected! Try: read my unread emails.";
+  addBot(msg); say(msg);
+};
+loadStatus();
+
+
+/* ---------------- voice picker ---------------- */
+async function openVoiceAsync() { await refreshMyVoice(); openVoice(); }
+function openVoice() {
+  const sel = $("vpVoice"); sel.innerHTML = "";
+  if (MYVOICE.natural) {
+    for (const [id, label] of NATURAL) {
+      const o = document.createElement("option");
+      o.value = "nat:" + id; o.textContent = "✨ Natural · " + label;
+      if (store.get("myosVoice", "") === o.value) o.selected = true;
+      sel.appendChild(o);
+    }
+  }
+  if (MYVOICE.installed) {
+    $("myBox").hidden = false;
+    $("myStatus").textContent = MYVOICE.has_voice ? (MYVOICE.ready ? "✓ Recorded" : "✓ Recorded · warming up…") : "Not recorded yet";
+    $("myRec").textContent = MYVOICE.has_voice ? "● Re-record my voice" : "● Record my voice";
+    if (MYVOICE.has_voice) {
+      const o = document.createElement("option");
+      o.value = MINE; o.textContent = "🎙️ My voice (" + NAME + ")";
+      if (store.get("myosVoice", "") === MINE) o.selected = true;
+      sel.appendChild(o);
+    }
+  }
+  const vs = englishVoices().sort((a, b) =>
+    (/Premium|Enhanced/i.test(b.name) - /Premium|Enhanced/i.test(a.name)) || a.name.localeCompare(b.name));
+  for (const v of vs) {
+    const o = document.createElement("option");
+    const accent = { "en-GB": "British", "en-US": "American", "en-IN": "Indian", "en-AU": "Australian", "en-IE": "Irish", "en-ZA": "South African" }[v.lang.replace("_", "-")] || v.lang;
+    o.value = v.name; o.textContent = `${v.name} · ${accent}${v.localService ? "" : " · online"}`;
+    if (voice && v.name === voice.name) o.selected = true;
+    sel.appendChild(o);
+  }
+  $("vpRate").value = VOICE_RATE; $("vpPitch").value = VOICE_PITCH; showVals();
+  $("vp").classList.add("open");
+}
+function sendVoicePref() {
+  fetch("/api/voice/pref", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ voice: engineVoice() || "" }) }).catch(() => {});
+}
+function showVals() { $("vpRateV").textContent = (+$("vpRate").value).toFixed(2) + "×"; $("vpPitchV").textContent = (+$("vpPitch").value).toFixed(2); }
+function applyVoice() {
+  if ($("vpVoice").value === MINE || $("vpVoice").value.startsWith("nat:")) {
+    VOICE_RATE = +$("vpRate").value; VOICE_PITCH = +$("vpPitch").value;
+    store.set("myosVoice", $("vpVoice").value); store.set("myosRate", VOICE_RATE); store.set("myosPitch", VOICE_PITCH);
+    return;
+  }
+  voice = englishVoices().find(v => v.name === $("vpVoice").value) || voice;
+  VOICE_RATE = +$("vpRate").value; VOICE_PITCH = +$("vpPitch").value;
+  store.set("myosVoice", voice ? voice.name : ""); store.set("myosRate", VOICE_RATE); store.set("myosPitch", VOICE_PITCH);
+}
+$("vpVoice").onchange = () => { applyVoice(); say(`Hi ${NAME}, this is how I sound now.`); };
+
+// record your own voice
+let myRecorder = null, myTimer = null;
+$("myRec").onclick = async () => {
+  if (myRecorder && myRecorder.state === "recording") { myRecorder.stop(); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+  catch (e) { $("myStatus").textContent = "Please allow the microphone"; return; }
+  stopSpeaking();
+  const chunks = [];
+  myRecorder = new MediaRecorder(stream);
+  myRecorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  myRecorder.onstop = async () => {
+    clearInterval(myTimer); stream.getTracks().forEach(t => t.stop());
+    $("myRec").classList.remove("on"); $("myRec").disabled = true; $("myRec").textContent = "Learning your voice…";
+    const fd = new FormData(); fd.append("audio", new Blob(chunks, { type: myRecorder.mimeType || "audio/webm" }), "voice.webm");
+    let r = { ok: false, error: "MyOS isn't running." };
+    try { r = await (await fetch("/api/voice/sample", { method: "POST", body: fd })).json(); } catch (e) {}
+    $("myRec").disabled = false;
+    if (!r.ok) { $("myStatus").textContent = r.error; $("myRec").textContent = "● Try again"; return; }
+    store.set("myosVoice", MINE);
+    $("myStatus").textContent = "✓ Got it! Warming up your voice…";
+    for (let i = 0; i < 40 && !(await refreshMyVoice()).ready; i++) await new Promise(res => setTimeout(res, 1500));
+    openVoice();
+    say(`Hi ${NAME}! This is MyOS, and now I sound just like you.`);
+  };
+  myRecorder.start();
+  $("myRec").classList.add("on");
+  let left = 12;
+  $("myRec").textContent = `■ Stop (${left}s)`;
+  myTimer = setInterval(() => { left--; $("myRec").textContent = `■ Stop (${left}s)`; if (left <= 0) myRecorder.stop(); }, 1000);
+};
+$("vpRate").oninput = $("vpPitch").oninput = showVals;
+$("vpRate").onchange = $("vpPitch").onchange = applyVoice;
+$("vpPreview").onclick = () => { applyVoice(); say("Hi Sriya! I'm Myo, your MyOS assistant. Want me to read your emails?"); };
+$("vpDone").onclick = () => { applyVoice(); sendVoicePref(); $("vp").classList.remove("open"); loadStatus(); };
+$("vp").addEventListener("click", (e) => { if (e.target.id === "vp") { applyVoice(); $("vp").classList.remove("open"); loadStatus(); } });
+statusEl.textContent = "Hi! I'm Myo.";
+refreshMyVoice().then(() => {
+  // first time the natural voices are available, switch to one automatically
+  if (MYVOICE.natural && !store.get("myosNaturalInit", "")) {
+    store.set("myosVoice", "nat:af_heart");   // your own voice stays available in the voice menu
+    store.set("myosNaturalInit", "1");
+  }
+  loadStatus(); sendVoicePref();
+});
+
+/* ---------------- alarms & reminders appear in the chat ---------------- */
+let feedAt = -1;
+setInterval(async () => {
+  try {
+    const f = await (await fetch("/api/feed?after=" + feedAt)).json();
+    for (const it of f.items) {
+      addBot("⏰ " + it.text);
+      lastSpoken = it.text;                      // MyOS says it through the speakers itself
+      WK.quietUntil = performance.now() + 4000 + 90 * it.text.length;
+    }
+    feedAt = f.last;
+  } catch (e) {}
+}, 3000);
+
+/* ---------------- wake word: say "Baby, ..." any time ---------------- */
+const WAKE = /^\W*(?:(?:hey|hi|ok|okay|yo|oh)[\s,]+)?(?:baby|babe|bebe|my ?os|myo)\b[\s,.!?:-]*/i;
+const WK = { on: false, stream: null, ctx: null, proc: null, rec: false, pre: [], buf: [], loud: 0, speech: 0, quiet: 0, total: 0,
+             floor: 0.008, quietUntil: 0, awakeUntil: 0, working: false };
+
+function wakeUI() {
+  $("wakeOn").checked = WK.on;
+  $("wakeLbl").classList.toggle("live", WK.on);
+  $("wakeTxt").textContent = WK.on ? "Listening for “Baby”" : "Listen for “Baby”";
+}
+async function wakeStart() {
+  if (WK.on) return;
+  try {
+    WK.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  } catch (e) { addBot("I need microphone access to listen for “Baby”. Please allow it in your browser."); wakeUI(); return; }
+  WK.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = WK.ctx.createMediaStreamSource(WK.stream);
+  WK.proc = WK.ctx.createScriptProcessor(2048, 1, 1);
+  WK.proc.onaudioprocess = (e) => wakeTick(e.inputBuffer.getChannelData(0));
+  src.connect(WK.proc); WK.proc.connect(WK.ctx.destination);
+  WK.on = true; store.set("myosWake", "1"); wakeUI();
+  if (WK.ctx.state === "suspended") {           // browsers need one click before audio can run
+    statusEl.textContent = "Click anywhere to start listening";
+    document.addEventListener("click", () => { WK.ctx && WK.ctx.resume(); statusEl.textContent = ""; }, { once: true });
+  }
+}
+function wakeStop() {
+  WK.on = false; store.set("myosWake", "");
+  WK.proc && WK.proc.disconnect();
+  WK.stream && WK.stream.getTracks().forEach(t => t.stop());
+  WK.ctx && WK.ctx.close();
+  WK.stream = WK.ctx = WK.proc = null; WK.rec = false;
+  wakeUI();
+}
+function wakeTick(data) {
+  const now = performance.now(), ms = data.length / WK.ctx.sampleRate * 1000;
+  // don't listen while MyOS is busy, talking, or another mic mode is on
+  if (VM.on || recording || busy || WK.working || wrap.classList.contains("talking") || curAudio) {
+    WK.rec = false; WK.loud = 0; WK.pre = []; WK.quietUntil = Math.max(WK.quietUntil, now + 500); return;
+  }
+  if (now < WK.quietUntil) return;
+  let s = 0; for (let i = 0; i < data.length; i++) s += data[i] * data[i];
+  const rms = Math.sqrt(s / data.length), thresh = Math.max(0.02, WK.floor * 3.5);
+  const copy = new Float32Array(data);
+  if (!WK.rec) {
+    WK.pre.push(copy); if (WK.pre.length > 14) WK.pre.shift();          // keep ~0.6s so the first word isn't cut
+    if (rms > thresh) WK.loud += ms; else { WK.loud = 0; WK.floor = WK.floor * 0.97 + rms * 0.03; }
+    if (WK.loud >= 120) { WK.rec = true; WK.buf = WK.pre.slice(); WK.pre = []; WK.speech = WK.loud; WK.quiet = 0; WK.total = 0; }
+    return;
+  }
+  WK.buf.push(copy); WK.total += ms;
+  if (rms > thresh) { WK.speech += ms; WK.quiet = 0; } else WK.quiet += ms;
+  const awake = Date.now() < WK.awakeUntil;
+  if (WK.quiet > 520 || WK.total > 12000) {
+    WK.rec = false; WK.loud = 0;
+    if (WK.speech > 300) wakeHeard(WK.buf, WK.ctx.sampleRate);
+    WK.buf = [];
+  }
+}
+function toWav(chunks, rate) {
+  const n = chunks.reduce((a, c) => a + c.length, 0), v = new DataView(new ArrayBuffer(44 + n * 2));
+  const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
+  let o = 44;
+  for (const c of chunks) for (let i = 0; i < c.length; i++, o += 2) v.setInt16(o, Math.max(-1, Math.min(1, c[i])) * 32767, true);
+  return new Blob([v], { type: "audio/wav" });
+}
+async function wakeHeard(chunks, rate) {
+  WK.working = true;
+  try {
+    const fd = new FormData(); fd.append("audio", toWav(chunks, rate), "wake.wav");
+    let text = "";
+    try { text = ((await (await fetch("/api/transcribe", { method: "POST", body: fd })).json()).text || "").trim(); } catch (e) {}
+    if (!text || isEcho(text)) return;
+    const awake = Date.now() < WK.awakeUntil, m = text.match(WAKE);
+    if (!m && !awake) return;                                   // not talking to MyOS: ignore completely
+    const cmd = m ? text.slice(m[0].length).trim() : text;
+    if (cmd.replace(/\W/g, "").length < 2) {                    // just "Baby" -> "Yes?"
+      await say("Yes?"); WK.awakeUntil = Date.now() + 9000; return;
+    }
+    if (/^(never ?mind|nothing|stop|cancel)\W*$/i.test(cmd) && !lastExpectsReply) { WK.awakeUntil = 0; return; }
+    await send(cmd);
+    WK.awakeUntil = Date.now() + (lastExpectsReply ? 15000 : 5000);   // you can answer without saying "Baby" again
+  } finally { WK.working = false; WK.quietUntil = performance.now() + 500; }
+}
+$("wakeOn").onchange = () => $("wakeOn").checked ? wakeStart() : wakeStop();
+if (store.get("myosWake", "") === "1") wakeStart();
+</script>
+</body>
+</html>

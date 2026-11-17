@@ -1,0 +1,21 @@
+# secrets and personal data
+.env
+.env.*
+!.env.example
+contacts.json
+reminders.json
+voice/ref.wav
+voice/ref.txt
+voice/_test_standin/
+
+# large model files (download separately)
+voice/models/
+
+# environments, logs, caches
+.venv/
+.voice-venv/
+venv/
+__pycache__/
+*.pyc
+*.log
+.DS_Store

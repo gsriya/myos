@@ -1,0 +1,7 @@
+requests
+python-dotenv
+faster-whisper
+sounddevice
+soundfile
+numpy
+flask
